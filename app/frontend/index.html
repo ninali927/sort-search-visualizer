@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simple Algorithms Visualizer — Data Structures and Algorithms</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Design System -->
+    <link rel="stylesheet" href="design-system.css" />
+    <link rel="stylesheet" href="algorithms-styles.css" />
+
+    <!-- JavaScript Libraries -->
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"
+    ></script>
+    <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+    <script src="https://unpkg.com/htmx-ext-ws@2.0.1/ws.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6"></script>
+
+    <style>
+      .message-area-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+        width: 300px;
+      }
+      .message-area {
+        padding: 15px;
+        border-radius: var(--radius-md);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        background-color: var(--accent-primary);
+      }
+      .message-area.error {
+        background-color: var(--accent-danger);
+      }
+      .message-area.success {
+        background-color: var(--accent-success);
+      }
+      .message-area button {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div
+      class="container"
+      x-data="algorithmVisualizer"
+      hx-ext="ws"
+      hx-ws="connect:ws://localhost:7001/algorithm"
+      x-cloak
+    >
+      <!-- Application Header -->
+      <header class="app-header">
+        <h1>Simple Algorithms Visualizer</h1>
+        <p class="app-subtitle">
+          Interactive Visualization of Sorting Algorithms and Adaptive Search
+        </p>
+      </header>
+
+      <!-- Connection Status -->
+      <div class="status-bar">
+        <div
+          class="status"
+          :class="isConnected ? 'status-connected' : 'status-disconnected'"
+        >
+          <div class="status-indicator"></div>
+          <span x-text="isConnected ? 'Connected' : 'Disconnected'"></span>
+        </div>
+        <div class="algorithm-info" x-show="serverInfo">
+          <span x-text="serverInfo"></span>
+        </div>
+      </div>
+
+      <!-- Main Navigation -->
+      <nav class="algorithm-nav">
+        <div class="nav-tabs">
+          <button
+            class="nav-tab"
+            :class="{ active: activeTab === 'sorting' }"
+            @click="switchTab('sorting')"
+          >
+            <span class="nav-icon">🔄</span>
+            Sorting Algorithms
+          </button>
+          <button
+            class="nav-tab"
+            :class="{ active: activeTab === 'search' }"
+            @click="switchTab('search')"
+          >
+            <span class="nav-icon">🔍</span>
+            Adaptive Search
+          </button>
+          
+        </div>
+      </nav>
+
+      <!-- Sorting Algorithm Visualizer -->
+      <main class="grid grid-cols-1 lg:grid-cols-3 gap-8" x-show="activeTab === 'sorting'">
+        <!-- Configuration Panel -->
+        <section class="card lg:col-span-1">
+          <header class="card-header">
+            <h2 class="card-title">Sorting Configuration</h2>
+            <p class="card-description">
+              Set up your array parameters and select the sorting algorithm
+            </p>
+          </header>
+
+          <form @submit.prevent="createArray()">
+            <div class="config-grid">
+              <div class="form-group">
+                <label class="form-label">Data Type</label>
+                <select class="form-input" x-model="sortingConfig.dataType" @change="updateSortingConfig()">
+                  <option value="random">Random Data</option>
+                  <option value="sorted">Already Sorted</option>
+                  <option value="reverse">Reverse Sorted</option>
+                  <option value="nearly_sorted">Nearly Sorted</option>
+                  <option value="custom">Custom Input</option>
+                </select>
+              </div>
+
+              <div class="form-group" x-show="sortingConfig.dataType !== 'custom'">
+                <label class="form-label">Array Size: <span x-text="sortingConfig.size"></span></label>
+                <input
+                  type="range"
+                  class="form-range"
+                  min="5"
+                  max="50"
+                  x-model="sortingConfig.size"
+                  @input="updateSortingConfig()"
+                />
+              </div>
+
+              <div class="form-group" x-show="sortingConfig.dataType === 'custom'">
+                <label class="form-label">Custom Data</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  x-model="sortingConfig.customData"
+                  placeholder="e.g., 64,34,25,12,22,11,90"
+                  @input="updateSortingConfig()"
+                />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">List Implementation</label>
+                <select class="form-input" x-model="sortingConfig.listType" @change="updateSortingConfig()">
+                  <option value="array">Array-based List</option>
+                  <option value="linked">Linked List</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Algorithm</label>
+                <select class="form-input" x-model="sortingConfig.algorithm">
+                  <option value="bubble">Bubble Sort</option>
+                  <option value="optimized_bubble">Optimized Bubble Sort</option>
+                  <option value="insertion">Insertion Sort</option>
+                  <option value="binary_insertion">Binary Insertion Sort</option>
+                  <option value="selection">Selection Sort</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Speed: <span x-text="(2100 - sortingConfig.speed) + 'ms'"></span></label>
+                <input
+                  type="range"
+                  class="form-range"
+                  min="50"
+                  max="2000"
+                  step="50"
+                  x-model="sortingConfig.speed"
+                  @input="setAnimationSpeed()"
+                />
+              </div>
+            </div>
+
+            <div class="action-buttons">
+              <button type="submit" class="btn btn-primary" :disabled="sortingState.isRunning">
+                Create Array
+              </button>
+              <button
+                type="button"
+                class="btn btn-success"
+                @click="startSort()"
+                :disabled="!sortingState.arrayCreated || sortingState.isRunning"
+              >
+                Start Sort
+              </button>
+              <button
+                type="button"
+                class="btn btn-warning"
+                @click="pauseSort()"
+                :disabled="!sortingState.isRunning || sortingState.isPaused"
+              >
+                Pause
+              </button>
+              <button
+                type="button"
+                class="btn btn-info"
+                @click="resumeSort()"
+                :disabled="!sortingState.isRunning || !sortingState.isPaused"
+              >
+                Resume
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="stepSort()"
+                :disabled="!sortingState.isRunning"
+              >
+                Step
+              </button>
+              <button
+                type="button"
+                class="btn btn-accent"
+                @click="skipToEnd()"
+                :disabled="!sortingState.isRunning"
+              >
+                Skip to End
+              </button>
+              <button type="button" class="btn btn-danger" @click="resetSort()">
+                Reset
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Visualization Panel -->
+        <section class="card lg:col-span-2">
+          <header class="card-header">
+            <h2 class="card-title">Array Visualization</h2>
+            <p class="card-description">
+              Watch the sorting algorithm work step by step
+            </p>
+          </header>
+
+          <div class="visualization-container">
+            <div class="array-display" id="sorting-visualization">
+              <!-- Array bars will be rendered here -->
+            </div>
+          </div>
+
+          <!-- Performance Metrics -->
+          <div class="metrics-section">
+            <h3 class="metrics-title">Algorithm Performance</h3>
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <span class="metric-icon">⚖️</span>
+                <span class="metric-label">Comparisons</span>
+                <span class="metric-value" x-text="sortingMetrics.comparisons"></span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-icon">🔄</span>
+                <span class="metric-label">Swaps</span>
+                <span class="metric-value" x-text="sortingMetrics.swaps"></span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-icon">📊</span>
+                <span class="metric-label">Total Operations</span>
+                <span class="metric-value" x-text="sortingMetrics.comparisons + sortingMetrics.swaps"></span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-icon">👣</span>
+                <span class="metric-label">Current Step</span>
+                <span class="metric-value" x-text="sortingState.currentStep"></span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Adaptive Search Visualizer -->
+      <main class="grid grid-cols-1 lg:grid-cols-3 gap-8" x-show="activeTab === 'search'">
+        <!-- Configuration Panel -->
+        <section class="card lg:col-span-1">
+          <header class="card-header">
+            <h2 class="card-title">Search Configuration</h2>
+            <p class="card-description">
+              Configure your collection and explore adaptive search algorithms
+            </p>
+          </header>
+
+          <form @submit.prevent="createBag()">
+            <div class="config-grid">
+              <div class="form-group">
+                <label class="form-label">Data Type</label>
+                <select class="form-input" x-model="searchConfig.dataType" @change="updateSearchConfig()">
+                  <option value="sequential">Sequential (1,2,3...)</option>
+                  <option value="random">Random Data</option>
+                  <option value="skewed">Skewed Distribution</option>
+                  <option value="custom">Custom Input</option>
+                </select>
+              </div>
+
+              <div class="form-group" x-show="searchConfig.dataType !== 'custom'">
+                <label class="form-label">Collection Size: <span x-text="searchConfig.size"></span></label>
+                <input
+                  type="range"
+                  class="form-range"
+                  min="5"
+                  max="20"
+                  x-model="searchConfig.size"
+                  @input="updateSearchConfig()"
+                />
+              </div>
+
+              <div class="form-group" x-show="searchConfig.dataType === 'custom'">
+                <label class="form-label">Custom Data</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  x-model="searchConfig.customData"
+                  placeholder="e.g., 10,20,30,40,50"
+                  @input="updateSearchConfig()"
+                />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Bag Type</label>
+                <select class="form-input" x-model="searchConfig.bagType" @change="updateSearchConfig()">
+                  <option value="array">Array Bag (Transpose)</option>
+                  <option value="linked">Linked List Bag (Move-to-Front)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Search Element</label>
+                <input
+                  type="number"
+                  class="form-input"
+                  x-model="searchConfig.searchElement"
+                  placeholder="Enter element to search"
+                />
+              </div>
+            </div>
+
+            <div class="action-buttons">
+              <button type="submit" class="btn btn-primary" :disabled="searchState.isRunning">
+                Create Bag
+              </button>
+              <button
+                type="button"
+                class="btn btn-success"
+                @click="searchElement()"
+                :disabled="!searchState.bagCreated || !searchConfig.searchElement"
+              >
+                Search Element
+              </button>
+              <button type="button" class="btn btn-info" @click="runSimulation('uniform')">
+                Uniform Pattern
+              </button>
+              <button type="button" class="btn btn-warning" @click="runSimulation('skewed')">
+                Skewed Pattern
+              </button>
+              <button type="button" class="btn btn-secondary" @click="runSimulation('temporal')">
+                Temporal Pattern
+              </button>
+              <button type="button" class="btn btn-danger" @click="resetBag()">
+                Reset
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Visualization Panel -->
+        <section class="card lg:col-span-2">
+          <header class="card-header">
+            <h2 class="card-title">Collection Visualization</h2>
+            <p class="card-description">
+              Watch adaptive search algorithms optimize data access patterns
+            </p>
+          </header>
+
+          <div class="visualization-container">
+            <div class="array-display" id="search-visualization">
+              <!-- Collection structure will be rendered here -->
+            </div>
+          </div>
+
+          <!-- Search Metrics -->
+          <div class="metrics-section">
+            <h3 class="metrics-title">Search Performance</h3>
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <span class="metric-icon">🔍</span>
+                <span class="metric-label">Comparisons</span>
+                <span class="metric-value" x-text="searchMetrics.comparisons"></span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-icon">✏️</span>
+                <span class="metric-label">Modifications</span>
+                <span class="metric-value" x-text="searchMetrics.modifications"></span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-icon">🎯</span>
+                <span class="metric-label">Last Search</span>
+                <span class="metric-value" x-text="searchState.lastSearchResult"></span>
+              </div>
+              <div class="metric-card">
+                <span class="metric-icon">⏱️</span>
+                <span class="metric-label">Simulation</span>
+                <span class="metric-value" x-text="searchState.simulationProgress"></span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- System Messages -->
+      <section class="card lg:col-span-3 messages-panel">
+        <header class="card-header">
+          <h2 class="card-title">System Messages</h2>
+          <div class="flex justify-between items-center">
+            <p class="card-description">
+              Real-time communication with backend
+            </p>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                class="btn btn-sm btn-ghost"
+                @click="clearMessages()"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-ghost"
+                @click="toggleTheme()"
+                :title="`Current theme: ${getThemeLabel()}`"
+              >
+                <span x-text="getThemeIcon()"></span>
+                <span x-text="getThemeLabel()"></span>
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm"
+                :class="DEBUG ? 'btn-accent' : 'btn-ghost'"
+                @click="toggleDebug()"
+              >
+                Debug <span x-text="DEBUG ? 'ON' : 'OFF'"></span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div class="messages-container">
+          <template x-for="message in (messages || [])" :key="message.id">
+            <div class="message" :class="`message-${message.type}`">
+              <div
+                class="message-time"
+                x-text="formatTime(message.timestamp)"
+              ></div>
+              <div class="message-content" x-text="message.message"></div>
+            </div>
+          </template>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Main JavaScript -->
+    <script src="script.js"></script>
+  </body>
+</html>

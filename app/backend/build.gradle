@@ -1,0 +1,80 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'jacoco' 
+}
+
+group = 'io.github.ninali927'
+version = '1.0'
+
+// Modern Gradle 9.0 syntax for Java version
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+repositories {
+    mavenCentral()
+}
+
+// Configure source sets to include the core algorithm code directly
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java', '../../core/src/main/sortsearch']
+        }
+    }
+    test {
+        java {
+            srcDirs = ['src/test/java', '../../core/src/test/sortsearch']
+        }
+    }
+}
+
+dependencies {
+    // Javalin web framework - Latest version 6.x
+    implementation 'io.javalin:javalin:6.3.0'
+    
+    // JSON handling - Latest Gson
+    implementation 'com.google.code.gson:gson:2.11.0'
+    
+    // Logging - Latest SLF4J
+    implementation 'org.slf4j:slf4j-simple:2.0.16'
+    
+    // JUnit testing - Latest JUnit 5
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.11.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.11.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Mockito for testing
+    testImplementation 'org.mockito:mockito-core:5.14.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.14.0'
+}
+
+application {
+    mainClass = 'app.Application'
+}
+
+test {
+    useJUnitPlatform()
+    maxParallelForks = 1
+    forkEvery = 1
+    systemProperty 'java.awt.headless', 'true'
+    jvmArgs '-Dnet.bytebuddy.experimental=true'
+    finalizedBy jacocoTestReport // Generate report after tests
+}
+
+// JaCoCo configuration
+jacoco {
+    toolVersion = "0.8.13"
+}
+
+jacocoTestReport {
+    dependsOn test // tests are required to run before generating the report
+    reports {
+        xml.required = false
+        csv.required = false
+        html.outputLocation = layout.buildDirectory.dir('reports/jacoco')
+    }
+}
